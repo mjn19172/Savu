@@ -30,10 +30,19 @@ from itertools import chain
 from mpi4py import MPI
 from savu.core import process
 
-from savu.data.process_data import ProcessList
+from savu.data.plugin_info import PluginList
+from savu.core.utils import logfunction
 
 import savu.plugins.utils as pu
 import savu.test.test_utils as tu
+
+
+
+@logfunction
+def call_mpi_barrier():
+    logging.debug("Waiting at the barrier")
+    MPI.COMM_WORLD.barrier()
+
 
 if __name__ == '__main__':
 
@@ -49,7 +58,7 @@ if __name__ == '__main__':
                       type='string')
     parser.add_option("-d", "--dir", dest="directory",
                       help="Temp direcotry name",
-                      default="/dls/tmp/ssg37927/cluster",
+                      default="/dls/tmp/nic_savu/cluster",
                       type='string')
     (options, args) = parser.parse_args()
 
@@ -74,7 +83,7 @@ if __name__ == '__main__':
 
     MPI.COMM_WORLD.barrier()
 
-    logging.info("Starting the test process, true dat")
+    logging.info("Starting the test process")
 
     logging.debug("Rank : %i - Size : %i", RANK, SIZE)
 
@@ -82,16 +91,16 @@ if __name__ == '__main__':
 
     logging.debug("ip address is : %s", IP)
 
-    MPI.COMM_WORLD.barrier()
+    call_mpi_barrier()
 
     import os
     logging.debug(os.getenv('LD_LIBRARY_PATH'))
 
-    MPI.COMM_WORLD.barrier()
+    call_mpi_barrier()
 
     process_filename = tu.get_test_data_path(options.process_filename)
 
-    process_list = ProcessList()
+    process_list = PluginList()
     process_list.populate_process_list(process_filename)
 
     first_plugin = pu.load_plugin(process_list.process_list[0]['id'])
@@ -101,4 +110,6 @@ if __name__ == '__main__':
                              mpi=True, processes=ALL_PROCESSES,
                              process=RANK)
 
-    MPI.COMM_WORLD.barrier()
+    call_mpi_barrier()
+
+    

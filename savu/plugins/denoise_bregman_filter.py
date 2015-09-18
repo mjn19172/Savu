@@ -25,7 +25,7 @@ import logging
 from skimage.restoration import denoise_tv_bregman
 
 from savu.plugins.filter import Filter
-from savu.plugins.cpu_plugin import CpuPlugin
+from savu.plugins.driver.cpu_plugin import CpuPlugin
 
 from savu.plugins.utils import register_plugin
 
@@ -49,9 +49,10 @@ class DenoiseBregmanFilter(Filter, CpuPlugin):
         return {}
     
     def get_max_frames(self):
-        return 1
+        return 8
 
-    def filter_frame(self, data):
+    def filter_frame(self, data, params):
+        data = data[0]
         logging.debug("Running Denoise")
         weight = self.parameters['weight']
         max_iter = self.parameters['max_iterations']
@@ -59,3 +60,4 @@ class DenoiseBregmanFilter(Filter, CpuPlugin):
         isotropic = self.parameters['isotropic']
         return denoise_tv_bregman(data[0, ...], weight, max_iter=max_iter,
                                   eps=eps, isotropic=isotropic)
+        

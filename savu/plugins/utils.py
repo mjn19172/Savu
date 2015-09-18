@@ -50,12 +50,12 @@ def load_plugin(plugin_name):
     :returns:  An instance of the class described by the named plugin
 
     """
-    logging.debug("Running load_plugin")
+    #logging.debug("Running load_plugin")
     path, name = os.path.split(plugin_name)
-    logging.debug("Path is : %s", path)
-    logging.debug("Name is : %s", name)
+    #logging.debug("Path is : %s", path)
+    #logging.debug("Name is : %s", name)
     if (path is not '') and (path not in sys.path):
-        logging.debug("Appending path")
+        #logging.debug("Appending path")
         sys.path.append(path)
     mod = __import__(name)
     components = name.split('.')
@@ -153,7 +153,7 @@ def create_output_data(plugin, input_data, file_name, group_name, mpi=False,
     :type file_name: path
     :param group_name: the group name which all the data will be put into
     :type group_name: str
-    :param mpi: Whether this is running in the MPI enviroment
+    :param mpi: Whether this is running in the MPI environment
     :type mpi: bool
     :returns:  The output data object
     """

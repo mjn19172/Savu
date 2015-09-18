@@ -14,7 +14,7 @@
 """
 .. module:: utils
    :platform: Unix
-   :synopsis: Utilitits for managing data
+   :synopsis: Utilities for managing data
 
 .. moduleauthor:: Mark Basham <scientificsoftware@diamond.ac.uk>
 
@@ -24,6 +24,9 @@ import numpy as np
 
 
 def get_slice_list(data, frame_type):
+        
+    # frame_type = SINOGRAM/PROJECTION
+    
     if frame_type in data.core_directions.keys():
         it = np.nditer(data.data, flags=['multi_index'])
         dirs_to_remove = list(data.core_directions[frame_type])
@@ -108,9 +111,9 @@ def get_grouped_slice_list(data, frame_type, max_frames):
     return gsl
 
 
-def get_slice_list_per_process(slice_list, process, processes):
+def get_slice_list_per_process(slice_list, plugin, processes):
     frame_index = np.arange(len(slice_list))
-    frames = np.array_split(frame_index, processes)[process]
+    frames = np.array_split(frame_index, processes)[plugin]
     return slice_list[frames[0]:frames[-1]+1]
 
 

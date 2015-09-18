@@ -22,8 +22,8 @@
 
 """
 from savu.plugins.base_recon import BaseRecon
-from savu.data.process_data import CitationInfomration
-from savu.plugins.cpu_plugin import CpuPlugin
+from savu.data.plugin_info import CitationInformation
+from savu.plugins.driver.cpu_plugin import CpuPlugin
 
 import numpy as np
 
@@ -47,32 +47,40 @@ class SimpleRecon(BaseRecon, CpuPlugin):
         ffs = fs*ff
         return np.fft.ifft(ffs).real
 
-    def _back_project(self, mapping, sino_element, center):
-        mapping_array = mapping+center
+    def _back_project(self, mapping, sino_element, centre):
+        mapping_array = mapping+centre
         return sino_element[mapping_array.astype('int')]
 
     def _mapping_array(self, shape, center, theta):
         x, y = np.meshgrid(np.arange(-center[0], shape[0] - center[0]),
-                           np.arange(-center[1], shape[1]-center[1]))
+                           np.arange(-center[1], shape[1] - center[1]))
         return x*np.cos(theta) - y*np.sin(theta)
 
-    def reconstruct(self, sinogram, centre_of_rotation, angles, shape, center):
-        result = np.zeros(shape)
-        sino = np.nan_to_num(sinogram)
-        sino = np.log(sino+1)
+    def pre_process(self, exp):
+        out_data = self.get_data_objects(exp.index, "out_data")
+        centre = tuple((np.asarray(out_data[0].get_pattern_shape()))/2)
+        params = [centre]
+        return params
+
+    def reconstruct(self, sinogram, centre_of_rotations, vol_shape, params):
+        centre = params[0]
+        result = np.zeros(vol_shape, dtype=np.float32)
+
         for i in range(sinogram.shape[0]):
-            theta = i * (np.pi/sinogram.shape[0])
-            mapping_array = self._mapping_array(shape, center, theta)
-            filt = np.zeros(sinogram.shape[1]*3)
+            theta = i*(np.pi/sinogram.shape[0])
+            mapping_array = self._mapping_array(vol_shape, centre, theta)
+            filt = np.zeros(sinogram.shape[1]*3, dtype=np.float32)
             filt[sinogram.shape[1]:sinogram.shape[1]*2] = \
-                self._filter(sino[i, :])
+                self._filter(np.log(np.nan_to_num(sinogram)+1)[i, :])
+
             result += \
                 self._back_project(mapping_array, filt,
-                                   (centre_of_rotation + sinogram.shape[1]))
+                                   (centre_of_rotations + sinogram.shape[1]))
+        result = result[:, np.newaxis, :]
         return result
 
-    def get_citation_inforamtion(self):
-        cite_info = CitationInfomration()
+    def get_citation_information(self):
+        cite_info = CitationInformation()
         cite_info.description = \
             ("The Tomographic reconstruction performed in this processing " +
              "chain is derived from this work.")

@@ -21,8 +21,8 @@
 .. moduleauthor:: Mark Basham <scientificsoftware@diamond.ac.uk>
 
 """
-from savu.data.structures import RawTimeseriesData, ProjectionData
-from savu.plugins.cpu_plugin import CpuPlugin
+
+from savu.plugins.driver.cpu_plugin import CpuPlugin
 from savu.plugins.plugin import Plugin
 from savu.core.utils import logmethod
 
@@ -36,66 +36,83 @@ class TimeseriesFieldCorrections(Plugin, CpuPlugin):
     """
     A Plugin to apply a simple dark and flatfield correction to some
     raw timeseries data
+    :param in_datasets: Create a list of the dataset(s) to process. Default: [].
+    :param out_datasets: Create a list of the dataset(s) to process. Default: [].
+
     """
 
     def __init__(self):
         super(TimeseriesFieldCorrections,
               self).__init__("TimeseriesFieldCorrections")
 
-    @logmethod
-    def process(self, data, output, processes, process):
+    def correction(self, data, image_keys, params):
+        trimmed_data = data[image_keys == 0]
+        dark = data[image_keys == 2]
+        dark = dark.mean(0)
+        dark = np.tile(dark, (trimmed_data.shape[0], 1, 1))
+        flat = data[image_keys == 1]
+        flat = flat.mean(0)
+        flat = np.tile(flat, (trimmed_data.shape[0], 1, 1))
+        data = (trimmed_data-dark)/(flat-dark)
+        return data
+
+    def process(self, exp, transport, params):
+        in_data = self.get_data_objects(exp.index, "in_data")
+        out_data = self.get_data_objects(exp.index, "out_data")
+        transport.timeseries_field_correction(self, in_data, out_data, exp.meta_data, params)
+
+    def setup(self, experiment):
         """
+        Initial setup of all datasets required as input and output to the 
+        plugin.  This method is called before the process method in the plugin
+        chain.  
         """
-        image_key = data.image_key[...]
-        # pull out the average dark and flat data
-        dark = None
-        try:
-            dark = np.mean(data.data[image_key == 2, :, :], 0)
-        except:
-            dark = np.zeros((data.data.shape[1], data.data.shape[2]))
-        flat = None
-        try:
-            flat = np.mean(data.data[image_key == 1, :, :], 0)
-        except:
-            flat = np.ones((data.data.shape[1], data.data.shape[2]))
-        # shortcut to reduce processing
-        flat = flat - dark
 
-        # get a list of all the frames
-        projection_frames = np.arange(len(image_key))[image_key == 0]
-        output_frames = np.arange(len(projection_frames))
+        chunk_size = self.get_max_frames()
 
-        frames = np.array_split(output_frames, len(processes))[process]
+        #-------------------setup input datasets-------------------------
 
-        # The rotation angle can just be pulled out of the file so write that
-        rotation_angle = data.rotation_angle[image_key == 0]
-        output.rotation_angle[:] = rotation_angle
+        # get a list of input dataset names required for this plugin
+        in_data_list = self.parameters["in_datasets"]
+        # get all input dataset objects
+        in_d1 = experiment.index["in_data"][in_data_list[0]]
+        # set all input data patterns
+        in_d1.set_current_pattern_name("SINOGRAM")
+        # set frame chunk
+        in_d1.set_nFrames(chunk_size)
 
-        for frame in frames:
-            projection = data.data[projection_frames[frame], :, :]
-            projection = (projection-dark)/flat  # (flat-dark)
-            output.data[frame, :, :] = projection
+        #----------------------------------------------------------------
 
-    def required_resource(self):
-        """
-        This plugin needs to use the CPU to work
+        #------------------setup output datasets-------------------------
 
-        :returns:  CPU
-        """
-        return "CPU"
+        # get a list of output dataset names created by this plugin
+        out_data_list = self.parameters["out_datasets"]
 
-    def required_data_type(self):
-        """
-        The input for this plugin is RawTimeseriesData
+        # create all out_data objects and associated patterns and meta_data
+        # patterns can be copied, added or both
+        out_d1 = experiment.create_data_object("out_data", out_data_list[0])
 
-        :returns:  RawTimeseriesData
-        """
-        return RawTimeseriesData
+        out_d1.copy_patterns(in_d1.get_patterns())
+        # copy the entire in_data dictionary (image_key, dark and flat will 
+        #be removed since out_data is no longer an instance of TomoRaw)
+        # If you do not want to copy the whole dictionary pass the key word
+        # argument copyKeys = [your list of keys to copy], or alternatively, 
+        # removeKeys = [your list of keys to remove]
+        out_d1.meta_data.copy_dictionary(in_d1.meta_data.get_dictionary(), rawFlag=True)
 
-    def output_data_type(self):
-        """
-        The output of this plugin is ProjectionData
+        # set pattern for this plugin and the shape
+        out_d1.set_current_pattern_name("SINOGRAM")
+        out_d1.set_shape(in_d1.remove_dark_and_flat())
+        # set frame chunk
+        out_d1.set_nFrames(chunk_size)
 
-        :returns:  ProjectionData
-        """
-        return ProjectionData
+        #----------------------------------------------------------------
+
+    def nInput_datasets(self):
+        return 1
+
+    def nOutput_datasets(self):
+        return 1
+
+    def get_max_frames(self):
+        return 1

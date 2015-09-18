@@ -20,41 +20,29 @@
 .. moduleauthor:: Mark Basham <scientificsoftware@diamond.ac.uk>
 
 """
-import logging
 import optparse
 import sys
 import os
 
-from savu.log_handler.handler import SQLiteHandler
-from savu.core import process
-
-from savu.data.process_data import ProcessList
-
-import savu.plugins.utils as pu
-
-MACHINE_NUMBER_STRING = '0'
-MACHINE_RANK_NAME = 'cpu1'
+from savu.core.plugin_runner import PluginRunner
 
 
-if __name__ == '__main__':
-
+def option_parser():
     usage = "%prog [options] input_file output_directory"
     version = "%prog 0.1"
     parser = optparse.OptionParser(usage=usage, version=version)
     parser.add_option("-n", "--names", dest="names", help="Process names",
-                      default="CPU1,CPU2,CPU3,CPU4,CPU5,CPU6,CPU7,CPU8",
+                      default="CPU0",
                       type='string')
-    parser.add_option("-f", "--filename", dest="process_filename",
-                      help="The filename of the process file",
-                      default="/home/ssg37927/Savu/test_data/process01.nxs",
+    parser.add_option("-t", "--transport", dest="transport",
+                      help="Set the transport mechanism",
+                      default="hdf5",
                       type='string')
-    parser.add_option("-l", "--log2db", dest="log2db",
-                      help="Set logging to go to a database",
-                      default=False,
-                      action="store_true")
     (options, args) = parser.parse_args()
+    return [options, args]
 
 
+def check_input_params(args):  
     # Check basic items for completeness
     if len(args) is not 3:
         print("filename, process file and output path needs to be specified")
@@ -76,26 +64,17 @@ if __name__ == '__main__':
         print("Exiting with error code 4 - Output Directory missing")
         sys.exit(4)
 
-    logger = logging.getLogger()
-    logger.setLevel(logging.DEBUG)
-    if options.log2db:
-        sqlh = SQLiteHandler(db=os.path.join(args[2],'log.db'))
-        logger.addHandler(sqlh)
-    else :
-        fh = logging.FileHandler(os.path.join(args[2],'log.txt'), mode='w')
-        fh.setFormatter(logging.Formatter('L %(relativeCreated)12d M' +
-                MACHINE_NUMBER_STRING + ' ' + MACHINE_RANK_NAME +
-                ' %(levelname)-6s %(message)s'))
-        logger.addHandler(fh)
 
-    logging.info("Starting tomo_recon process")
+def set_options(opt, args):
+    options = {}
+    options["transport"] = opt.transport
+    options["process_names"] = opt.names
+    options["data_file"] = args[0]
+    options["process_file"] = args[1]
+    options["out_path"] = args[2]
+    return options
 
-    
-    process_filename = options.process_filename
-
-    process_list = ProcessList()
-    process_list.populate_process_list(process_filename)
-
-    input_data = pu.load_raw_data(args[0])
-
-    process.run_process_list(input_data, process_list, args[2])
+if __name__ == '__main__':
+    [options, args] = option_parser()
+    check_input_params(args)
+    PluginRunner(set_options(options, args))

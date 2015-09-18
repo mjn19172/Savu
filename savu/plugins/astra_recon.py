@@ -21,7 +21,7 @@ from savu.data.process_data import CitationInfomration
 .. moduleauthor:: Mark Basham <scientificsoftware@diamond.ac.uk>
 
 """
-from savu.plugins.cpu_plugin import CpuPlugin
+from savu.plugins.driver.cpu_plugin import CpuPlugin
 
 from savu.plugins.utils import register_plugin
 
@@ -32,7 +32,9 @@ class AstraRecon(BaseAstraRecon, CpuPlugin):
     A Plugin to run the astra reconstruction
     
     :param number_of_iterations: Number of Iterations if an iterative method is used . Default: 1.
-    :param reconstruction_type: Reconstruction type (SIRT|FBP). Default: 'FBP'.
+    :param reconstruction_type: Reconstruction type (FBP|SIRT|SART|ART|CGLS| \
+                                                     FBP_CUDA|SIRT_CUDA|SART_CUDA|CGLS_CUDA| \
+                                                     SIRT3D_CUDA|CGLS3D_CUDA). Default: 'CGLS_CUDA'.
     """
 
     def __init__(self):

@@ -29,10 +29,16 @@ import os
 from itertools import chain
 from mpi4py import MPI
 
-from savu.core import process
-from savu.data.process_data import ProcessList
+from savu.data.plugin_info import PluginList
+from savu.core.utils import logfunction
 
 import savu.plugins.utils as pu
+
+
+@logfunction
+def call_mpi_barrier():
+    logging.debug("Waiting at the barrier")
+    MPI.COMM_WORLD.barrier()
 
 if __name__ == '__main__':
 
@@ -43,9 +49,10 @@ if __name__ == '__main__':
                       default="CPU1,CPU2,CPU3,CPU4,CPU5,CPU6,CPU7,CPU8",
                       type='string')
     (options, args) = parser.parse_args()
-
+    
     # Check basic items for completeness
     if len(args) is not 3:
+        print len(args)
         print "filename, process file and output path needs to be specified"
         print "Exiting with error code 1 - incorrect number of inputs"
         sys.exit(1)
@@ -88,29 +95,29 @@ if __name__ == '__main__':
 
     logging.info("Starting the reconstruction pipeline process")
 
-    logging.debug("Rank : %i - Size : %i", RANK, SIZE)
+    logging.debug("Rank : %i - Size : %i - host : %s", RANK, SIZE, socket.gethostname())
 
     IP = socket.gethostbyname(socket.gethostname())
 
     logging.debug("ip address is : %s", IP)
 
-    MPI.COMM_WORLD.barrier()
-
+    call_mpi_barrier()
+    
     logging.debug("LD_LIBRARY_PATH is %s",  os.getenv('LD_LIBRARY_PATH'))
 
-    MPI.COMM_WORLD.barrier()
+    call_mpi_barrier()
 
     process_filename = args[1]
 
-    process_list = ProcessList()
-    process_list.populate_process_list(process_filename)
+    plugin_list = PluginList()
+    plugin_list.populate_process_list(process_filename)
 
     input_data = pu.load_raw_data(args[0])
 
-    process.run_process_list(input_data, process_list, args[2],
-                             mpi=True, processes=ALL_PROCESSES,
-                             process=RANK)
+#    process.run_process_list(input_data, plugin_list, args[2],
+#                             mpi=True, processes=ALL_PROCESSES,
+#                             process=RANK)
 
-    MPI.COMM_WORLD.barrier()
+    call_mpi_barrier()
 
     logging.info("Python MPI script complete")

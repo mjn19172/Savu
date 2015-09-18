@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from savu.plugins.base_recon import BaseRecon
-from savu.data.process_data import CitationInfomration
+from savu.data.plugin_info import CitationInfomration
 
 """
 .. module:: cgls_recon
@@ -20,11 +20,9 @@ from savu.data.process_data import CitationInfomration
    :synopsis: Wrapper around the CCPi cgls reconstruction
 .. moduleauthor:: Nicola Wadeson <scientificsoftware@diamond.ac.uk>
 
-from savu.plugins.cpu_plugin import CpuPlugin
-
 """
 
-from savu.plugins.cpu_plugin import CpuPlugin
+from savu.plugins.driver.cpu_plugin import CpuPlugin
 
 import numpy as np
 
@@ -38,7 +36,7 @@ class CglsRecon(BaseRecon, CpuPlugin):
     """
      A Plugin to run the CCPi cgls reconstruction
     
-    :param number_of_iterations: Number of Iterations if an iterative method is used . Default: 1.
+    :param number_of_iterations: Number of Iterations if an iterative method is used . Default: 5.
     :param resolution: Determines the number of output voxels where resolution = n_pixels/n_voxels. Default: 1.
     :param number_of_threads: Number of OMP threads. Default: 1
     """
@@ -53,11 +51,13 @@ class CglsRecon(BaseRecon, CpuPlugin):
         num_iterations = self.parameters['number_of_iterations']
         resolution = self.parameters['resolution']
 
-        pixels = np.hstack([np.reshape(sinogram.astype(np.float32), (sinogram.shape[0], 1, sinogram.shape[1]))]*4)
+        pixels = np.hstack([np.reshape(sinogram.astype(np.float32), \
+                            (sinogram.shape[0], 1, sinogram.shape[1]))]*4)
 
-        voxels = ccpi.cgls(pixels, angles.astype(np.float32), centre_of_rotation, \
-                           resolution, num_iterations, nthreads)
-                           
+        voxels = ccpi.cgls(pixels, angles.astype(np.float32), \
+                                            centre_of_rotation, resolution, \
+                                            num_iterations, nthreads)
+
         voxels = voxels[:160,:160,1]   
          
         return voxels

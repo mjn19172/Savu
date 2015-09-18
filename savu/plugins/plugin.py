@@ -28,13 +28,28 @@ from savu.plugins import utils as pu
 
 class Plugin(object):
     """
-    The base class from which all plugins should inherit.
+    The base class from which all plugins should inherit.    
     """
 
     def __init__(self, name='Plugin'):
         super(Plugin, self).__init__()
         self.name = name
         self.parameters = {}
+        self.data_objs = {}       
+
+    def setup(self, experiment):
+        """
+        This method is first to be called after the plugin has been created. 
+
+        :param in_data: The input data object (set to "None" if this is a loader)
+        :type in_data: savu.data.experiment
+        :param out_data: The output data object
+        :type out_data: savu.data.experiment
+        """
+        logging.error("set_up needs to be implemented for proc %i of %i :" +
+                      " input is %s and output is %s", experiment.__class__)
+        raise NotImplementedError("setup needs to be implemented")
+        
 
     def populate_default_parameters(self):
         """
@@ -51,6 +66,7 @@ class Plugin(object):
                 full_description = pu.find_args(clazz);
                 for item in full_description:
                     self.parameters[item['name']] = item['default']
+
 
     def set_parameters(self, parameters):
         """
@@ -73,7 +89,7 @@ class Plugin(object):
                                      self.name)
                                      
                                      
-    def pre_process(self, data_size):
+    def pre_process(self, exp):
         """
         This method is called after the plugin has been created by the
         pipeline framework as a pre-processing step
@@ -95,7 +111,7 @@ class Plugin(object):
         """
         pass
 
-    def process(self, data, output, processes, process):
+    def process(self, experiment, transport, params):
         """
         This method is called after the plugin has been created by the
         pipeline framework and forms the main processing step
@@ -109,43 +125,47 @@ class Plugin(object):
         :param path: The specific process which we are
         :type path: int
         """
-        logging.error("process needs to be implemented for proc %i of %i :" +
-                      " input is %s and output is %s",
-                      process, processes, data.__class__, output.__class__)
+        if experiment is not None and transport is not None :
+            logging.error("process needs to be implemented for proc %i of %i :" +
+                          " input is %s and output is %s",
+                          experiment.__class__, transport.__class__)
         raise NotImplementedError("process needs to be implemented")
 
-    def required_data_type(self):
-        """Gets the input data type which is required for the plugin
+        
+    def get_data_objects(self, expIndex, dtype):
+        data_list = (self.parameters["in_datasets"] if dtype is "in_data" 
+                                    else self.parameters["out_datasets"])
+        print "get_data_objects", data_list
+        data_objs = []
+        for data in data_list:
+            data_objs.append(expIndex[dtype][data])
+        return data_objs
+        
+        
+    def nInput_datasets(self):
+        """
+        The number of datasets required as input to the plugin
 
-        :returns:  the class of the data which is expectd
+        :returns:  Number of input datasets
 
         """
-        logging.error("required_data_type needs to be implemented")
-        raise NotImplementedError("required_data_type needs to be implemented")
+        raise NotImplementedError("nInput_datasets needs to be implemented")
 
-    def output_data_type(self):
-        """Gets the output data type which is provided by the plugin
 
-        :returns:  the class of the data which will be provided
+    def nOutput_datasets(self):
+        """
+        The number of datasets created by the plugin
+
+        :returns:  Number of output datasets
 
         """
-        logging.error("output_data_type needs to be implemented")
-        raise NotImplementedError("output_data_type needs to be implemented")
+        raise NotImplementedError("nOutput_datasets needs to be implemented")
+        
 
-    def get_output_shape(self, input_data):
-        """
-        Gets the output data shape which is provided by the plugin
-        This defaults to the standard size of the data previously generated
-
-        :returns:  the shape of the data which will be output by this plugin
-
-        """
-        return None
-
-    def get_citation_inforamtion(self):
+    def get_citation_information(self):
         """Gets the Citation Information for a plugin
 
-        :returns:  A populated savu.data.process_data.CitationInfomration
+        :returns:  A populated savu.data.plugin_info.CitationInfomration
 
         """
         return None
